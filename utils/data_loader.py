@@ -3,6 +3,7 @@ import json
 import lzma
 import requests
 import mimetypes
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from glob import glob
@@ -175,3 +176,5 @@ class PublicBulkDataLoader:
             format="%Y-%m-%d",
             errors="coerce",
         )
+        self.df.replace({np.nan: None}, inplace = True)
+
