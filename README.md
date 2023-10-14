@@ -39,7 +39,7 @@ def setup_elastic(version : str = "7.15.0") -> None:
 
 def setup_ngrok(port : int = 9200) -> None:
     ngrok.kill()
-    ngrok.set_auth_token("2WfBAs5cu2b8YLWTMXYsWlYvkrZ_2qB7vTUfzZNCbk1TQgd9U")
+    ngrok.set_auth_token("<NGROK_AUTH_TOKEN>")
     print(ngrok.connect(port))
 ```
 
