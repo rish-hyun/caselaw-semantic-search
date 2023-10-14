@@ -11,7 +11,7 @@ pip install -r requirements.txt
 
 ## Usage
 ```bash
-python main.py
+streamlit run app.py
 ```
 
 ## Steps to set up Elasticsearch on Google Colab
