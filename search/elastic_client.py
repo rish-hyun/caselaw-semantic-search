@@ -36,7 +36,7 @@ class ElasticSearchClient:
                         "docket_number": {"type": "text"},
                         "first_page": {"type": "text"},
                         "last_page": {"type": "text"},
-                        "citations": {"type": "text"},
+                        "citations": {"type": "nested"},
                         "cites_to": {"type": "text"},
                         "frontend_url": {"type": "keyword"},
                         "volume": {
@@ -75,7 +75,7 @@ class ElasticSearchClient:
                                     "dims": self.model.get_embedding_dims(),
                                 },
                                 "head_matter": {"type": "text"},
-                                "opinions": {"type": "text"},
+                                "opinions": {"type": "nested"},
                                 "attorneys": {"type": "text"},
                                 "judges": {"type": "text"},
                                 "corrections": {"type": "text"},
@@ -100,7 +100,7 @@ class ElasticSearchClient:
                         "docket_number": row["docket_number"],
                         "first_page": row["first_page"],
                         "last_page": row["last_page"],
-                        # "citations": row["citations"],
+                        "citations": row["citations"],
                         "cites_to": row.get("cites_to"),
                         "frontend_url": row["frontend_url"],
                         "volume": {
@@ -129,7 +129,7 @@ class ElasticSearchClient:
                             "embedding": self.model.encode(
                                 row["casebody.data.head_matter"]
                             ),
-                            # "opinions": row["casebody.data.opinions"],
+                            "opinions": row["casebody.data.opinions"],
                             "attorneys": row["casebody.data.attorneys"],
                             "judges": row["casebody.data.judges"],
                             "corrections": row["casebody.data.corrections"],
