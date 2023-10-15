@@ -1,3 +1,4 @@
+from tqdm import tqdm
 from model import SemanticSearchModel
 from elasticsearch import Elasticsearch, helpers
 from config import ElasticSearchConfig as ESConfig
@@ -91,56 +92,71 @@ class ElasticSearchClient:
             },
         )
 
-    def populate(self, df) -> None:
-        for _, row in df.iterrows():
-            body = {
-                "id": row["id"],
-                "url": row["url"],
-                "name": row["name"],
-                "decision_date": row["decision_date"],
-                "docket_number": row["docket_number"],
-                "first_page": row["first_page"],
-                "last_page": row["last_page"],
-                "citations": row["citations"],
-                "cites_to": row.get("cites_to"),
-                "frontend_url": row["frontend_url"],
-                "volume": {
-                    "barcode": row["volume.barcode"],
-                    "volume_number": row["volume.volume_number"],
-                    "url": row["volume.url"],
-                },
-                "reporter": {
-                    "id": row["reporter.id"],
-                    "full_name": row["reporter.full_name"],
-                    "url": row["reporter.url"],
-                },
-                "court": {
-                    "id": row["court.id"],
-                    "name": row["court.name"],
-                    "url": row["court.url"],
-                },
-                "jurisdiction": {
-                    "id": row["jurisdiction.id"],
-                    "name_long": row["jurisdiction.name_long"],
-                    "whitelisted": row["jurisdiction.whitelisted"],
-                    "url": row["jurisdiction.url"],
-                },
-                "casebody": {
-                    "head_matter": row["casebody.data.head_matter"],
-                    "opinions": row["casebody.data.opinions"],
-                    "attorneys": row["casebody.data.attorneys"],
-                    "judges": row["casebody.data.judges"],
-                    "corrections": row["casebody.data.corrections"],
-                },
-                "embeddings": [
-                    {"vector": self.model.encode(row["casebody.data.head_matter"])},
-                    *[
-                        {"vector": self.model.encode(opinion["text"])}
-                        for opinion in row["casebody.data.opinions"]
-                    ],
-                ],
-            }
-            self.client.index(index=ESConfig.INDEX, body=body, id=row["id"])
+    def populate(self, df, chunk_size: int = 50) -> None:
+        for _i in tqdm(
+            range(0, df.shape[0], chunk_size),
+            desc="Populating Elasticsearch",
+        ):
+            chunk = df.iloc[_i : _i + chunk_size]
+            actions = [
+                {
+                    "_index": ESConfig.INDEX,
+                    "_id": row["id"],
+                    "_source": {
+                        "id": row["id"],
+                        "url": row["url"],
+                        "name": row["name"],
+                        "decision_date": row["decision_date"],
+                        "docket_number": row["docket_number"],
+                        "first_page": row["first_page"],
+                        "last_page": row["last_page"],
+                        "citations": row["citations"],
+                        "cites_to": row.get("cites_to"),
+                        "frontend_url": row["frontend_url"],
+                        "volume": {
+                            "barcode": row["volume.barcode"],
+                            "volume_number": row["volume.volume_number"],
+                            "url": row["volume.url"],
+                        },
+                        "reporter": {
+                            "id": row["reporter.id"],
+                            "full_name": row["reporter.full_name"],
+                            "url": row["reporter.url"],
+                        },
+                        "court": {
+                            "id": row["court.id"],
+                            "name": row["court.name"],
+                            "url": row["court.url"],
+                        },
+                        "jurisdiction": {
+                            "id": row["jurisdiction.id"],
+                            "name_long": row["jurisdiction.name_long"],
+                            "whitelisted": row["jurisdiction.whitelisted"],
+                            "url": row["jurisdiction.url"],
+                        },
+                        "casebody": {
+                            "head_matter": row["casebody.data.head_matter"],
+                            "opinions": row["casebody.data.opinions"],
+                            "attorneys": row["casebody.data.attorneys"],
+                            "judges": row["casebody.data.judges"],
+                            "corrections": row["casebody.data.corrections"],
+                        },
+                        "embeddings": [
+                            {
+                                "vector": self.model.encode(
+                                    row["casebody.data.head_matter"]
+                                )
+                            },
+                            *[
+                                {"vector": self.model.encode(opinion["text"])}
+                                for opinion in row["casebody.data.opinions"]
+                            ],
+                        ],
+                    },
+                }
+                for _, row in chunk.iterrows()
+            ]
+            helpers.bulk(self.client, actions)
 
     def search(self, query: str) -> list:
         embedding = self.model.encode(query)
@@ -163,7 +179,7 @@ class ElasticSearchClient:
         response = self.client.search(
             index=ESConfig.INDEX,
             body={
-                "size": 5,
+                "size": 1,
                 "query": script_query,
                 "_source": {
                     "includes": [
@@ -186,4 +202,4 @@ class ElasticSearchClient:
                 },
             },
         )
-        return response["hits"]["hits"]
+        return [hit["_source"] for hit in response["hits"]["hits"]]

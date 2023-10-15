@@ -2,19 +2,25 @@
 
 ---
 
-## Installation
+![](./screen-shot.png)
+
+---
+
+## 1. Installation
+- Linux
 ```bash
 virtualenv -p python venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
-
-## Usage
+- Windows
 ```bash
-streamlit run app.py
+virtualenv -p python venv
+venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-## Steps to set up Elasticsearch on Google Colab
+## 2. Steps to set up Elasticsearch on Google Colab
 ```bash
 !pip install pyngrok
 ```
@@ -29,6 +35,7 @@ def setup_elastic(version : str = "7.15.0") -> None:
     !tar -xzf elasticsearch-{version}-linux-x86_64.tar.gz
     !rm elasticsearch-{version}-linux-x86_64.tar.gz
     !chown -R daemon:daemon elasticsearch-{version}
+    !echo "xpack.security.enabled: false" >> /content/elasticsearch-{version}/config/elasticsearch.yml
 
     Popen(
         [f'elasticsearch-{version}/bin/elasticsearch'],
@@ -46,4 +53,18 @@ def setup_ngrok(port : int = 9200) -> None:
 ```python
 setup_elastic()
 setup_ngrok()
+```
+
+## 3. Create .env file
+```toml
+ELASTIC_SCHEME=<ELASTIC_SCHEME>
+ELASTIC_HOST=<ELASTIC_HOST>
+ELASTIC_PORT=<ELASTIC_PORT>
+ELASTIC_INDEX=<ELASTIC_INDEX>
+NGROk_AUTH_TOKEN=<NGROK_AUTH_TOKEN>
+```
+
+## 4. Usage
+```bash
+streamlit run app.py
 ```

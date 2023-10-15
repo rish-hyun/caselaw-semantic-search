@@ -1,6 +1,12 @@
 import streamlit as st
 from search import es_client
 
+st.set_page_config(
+    page_title="Case Law Semantic Search Engine",
+    page_icon="🔍",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 st.title("Case Law Semantic Search Engine")
 st.subheader("Search for similar cases using semantic search")
