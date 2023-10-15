@@ -70,16 +70,21 @@ class ElasticSearchClient:
                         },
                         "casebody": {
                             "properties": {
-                                "embedding": {
-                                    "type": "dense_vector",
-                                    "dims": self.model.get_embedding_dims(),
-                                },
                                 "head_matter": {"type": "text"},
                                 "opinions": {"type": "nested"},
                                 "attorneys": {"type": "text"},
                                 "judges": {"type": "text"},
                                 "corrections": {"type": "text"},
                             }
+                        },
+                        "embeddings": {
+                            "type": "nested",
+                            "properties": {
+                                "vector": {
+                                    "type": "dense_vector",
+                                    "dims": self.model.get_embedding_dims(),
+                                }
+                            },
                         },
                     }
                 }
@@ -122,34 +127,61 @@ class ElasticSearchClient:
                 },
                 "casebody": {
                     "head_matter": row["casebody.data.head_matter"],
-                    "embedding": self.model.encode(row["casebody.data.head_matter"]),
                     "opinions": row["casebody.data.opinions"],
                     "attorneys": row["casebody.data.attorneys"],
                     "judges": row["casebody.data.judges"],
                     "corrections": row["casebody.data.corrections"],
                 },
+                "embeddings": [
+                    {"vector": self.model.encode(row["casebody.data.head_matter"])},
+                    *[
+                        {"vector": self.model.encode(opinion["text"])}
+                        for opinion in row["casebody.data.opinions"]
+                    ],
+                ],
             }
             self.client.index(index=ESConfig.INDEX, body=body, id=row["id"])
 
     def search(self, query: str) -> list:
         embedding = self.model.encode(query)
         script_query = {
-            "script_score": {
-                "query": {"match_all": {}},
-                "script": {
-                    "source": "cosineSimilarity(params.query_vector, 'casebody.embedding') + 1.0",
-                    "params": {"query_vector": embedding.tolist()},
+            "nested": {
+                "path": "embeddings",
+                "score_mode": "max",
+                "query": {
+                    "function_score": {
+                        "script_score": {
+                            "script": {
+                                "source": "cosineSimilarity(params.query_vector, 'embeddings.vector') + 1.0",
+                                "params": {"query_vector": embedding.tolist()},
+                            }
+                        },
+                    }
                 },
             }
         }
         response = self.client.search(
             index=ESConfig.INDEX,
             body={
-                "size": 10,
+                "size": 5,
                 "query": script_query,
                 "_source": {
                     "includes": [
-                        "casebody.head_matter",
+                        "id",
+                        "url",
+                        "name",
+                        "decision_date",
+                        "docket_number",
+                        "first_page",
+                        "last_page",
+                        "citations",
+                        "cites_to",
+                        "frontend_url",
+                        "volume",
+                        "reporter",
+                        "court",
+                        "jurisdiction",
+                        "casebody",
                     ]
                 },
             },
