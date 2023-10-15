@@ -10,6 +10,7 @@ st.write("Enter a query in the search box below. The search engine will return t
 
 st.subheader("Search")
 query = st.text_input("Enter a query")
-results = es_client.search(query)
-for result in results:
-    st.write(result)
+if query:
+    results = es_client.search(query)
+    for result in results:
+        st.write(result)
